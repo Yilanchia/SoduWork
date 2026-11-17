@@ -244,6 +244,17 @@ def prepare(state: Path, log: Path) -> tuple[Path, Path]:
     if not python.is_file():
         run([sys.executable, "-m", "venv", str(venv)], cwd=state, log=log,
             label="[1/4] 创建独立环境 / Creating a private Python environment")
+        if not python.is_file():
+            # An MSYS2/Cygwin interpreter creates a POSIX-layout venv (bin/python
+            # instead of Scripts/python.exe), so every later step would fail with a
+            # bare WinError 2 naming no cause. Name the real problem here instead.
+            raise StartupError(
+                f"独立环境没有生成 {python}。当前解释器 {sys.executable} 可能是 MSYS2/Cygwin 版本，"
+                "venv 会按 POSIX 布局生成 bin/ 而不是 Scripts/。请改用 python.org 的官方 Windows 版"
+                "（或 py -3.12）后重跑同一入口。\n"
+                f"The private environment did not produce {python}. {sys.executable} looks like an "
+                "MSYS2/Cygwin build, whose venv uses a POSIX layout (bin/ instead of Scripts/). Use a "
+                "native python.org Windows build (or py -3.12) and run the same launcher again.")
     requirements = [ROOT / "hub-backend" / name for name in ("requirements.txt", "requirements-runner.txt")]
     py_stamp = state / "python-dependencies.sha256"
     wanted = digest_files(requirements, ROOT)
